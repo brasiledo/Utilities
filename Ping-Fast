@@ -5,13 +5,9 @@
 function ping-fast {
 param
 (
-
 $TimeoutMillisec = 1000,
-$computername = (Get-Clipboard),
-
-[Switch]$ResolveDNS
+$computername = (Get-Clipboard)
 )
-
 # hash table with error code to text translation
 $StatusCode_ReturnValue = 
 @{
@@ -37,53 +33,52 @@ $StatusCode_ReturnValue =
 11032='Negotiating IPSEC'
 11050='General Failure'
 }
-
 # hash table with calculated property that translates
 # numeric return value into friendly text
 
 $statusFriendlyText = @{
 # name of column
-Name = 'Status'
+Name = '  Status  '
 # code to calculate content of column
 Expression = { 
-# take status code and use it as index into
-# the hash table with friendly names
+# take status code and use it as index into the hash table with friendly names
 # make sure the key is of same data type (int)
 $StatusCode_ReturnValue[([int]$_.StatusCode)]
-}
+};align="center"
 }
 
 # calculated property that returns $true when status -eq 0
 $IsOnline = @{
 Name = 'Online'
-Expression = { $_.StatusCode -eq 0 }
+Expression = { $_.StatusCode -eq 0 };align="center"
 }
 
-# do DNS resolution when system responds to ping
+$IPv4= @{
+Name = 'IPv4 Address'
+Expression = {
+if ($_.StatusCode -eq 0 -and $_.Address -notlike '*.*.*.*')
+{ $_.IPV4ADDRESS }
+else{"     --    "}
+}
+}
+$Address = @{
+Name = 'Host Address'
+Expression = { $_.address };align="left"
+} 
 
 $DNSName = @{
-Name = 'DNSName'
+Name = ' DNSName '
 Expression = { 
-if ($_.StatusCode -eq 0) 
-{ 
-if ($_.Address -like '*.*.*.*') 
-{ 
-[Net.DNS]::GetHostByAddress($_.Address).HostName 
-} 
-else 
-{ 
-[Net.DNS]::GetHostByName($_.Address).HostName 
-       } 
-     }
-   }
- }
-
-
+if ($_.StatusCode -eq 0 -and $_.Address -like '*.*.*.*')
+{ [Net.DNS]::GetHostByAddress($_.Address).HostName }
+else{"   --    "}
+}
+}
 # convert list of computers into a WMI query string
 $query = $ComputerName -join "' or Address='"
 
-
 $ErrorActionPreference="silentlycontinue"
 
-Get-CimInstance -ClassName Win32_PingStatus -Filter "(Address='$query') and timeout=$TimeoutMillisec" | Sort-Object online | Select-Object -Property Address, IPV4Address, $IsOnline -ErrorAction Silentlycontinue
+Get-CimInstance -ClassName Win32_PingStatus -Filter "(Address='$Query') and timeout=$TimeoutMillisec" | Sort-Object -Descending statuscode | FT -Property $Address, $statusFriendlyText, $IPv4, $DNSName  -ErrorAction Silentlycontinue
+
 }
