@@ -1,0 +1,21 @@
+<# Tests for open ports on computer objects
+.Syntax 
+Test-Port -Host (Computername) -Port (Port Number)
+#>
+
+####### Test For Open Port ######
+Function Test-Port {
+Param(
+[Parameter(Mandatory)] 
+[int]$Port,
+[Parameter(Mandatory)] 
+[string[]]$Host
+)
+write-host ''
+$host | foreach {
+$test=test-netconnection $_ -port $port
+if ($test.TcpTestSucceeded -eq $True){
+write-host "Port Open on $_" -fore cyan;write-host ''
+}else{$_.Exception.Message};write-host ''
+ }
+  }
